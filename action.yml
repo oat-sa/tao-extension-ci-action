@@ -1,0 +1,19 @@
+name: TAO extension CI
+description: Executes a CI pipeline on a TAO extension
+inputs:
+  extension-name-config:
+    description: TAO extension name configuration field
+    required: true
+    default: tao-extension-name
+runs:
+  using: composite
+  steps:
+    - name: Fetch extension's name
+      id: configuration
+      shell: bash
+      env:
+        EXTENSION_NAME_FIELD: ${{ inputs.extension-name-config }}
+      run: echo ::set-output name=extension-name::$(composer config "extra.$EXTENSION_NAME_FIELD")
+    - name: Validate extension name
+      shell: bash
+      run: echo ${{ steps.configuration.outputs.extension-name }}
