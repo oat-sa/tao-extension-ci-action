@@ -11,6 +11,10 @@ This action produces a TAO Extension name as an output.
 
 a composer package extra configuration field name to look up the TAO extension name
 
+### `test-suites-path` (optional)
+
+path to the extension's test suites
+
 ## Usage
 
 This action expects to run on a git repo of a TAO extension with `manifest` file available.
@@ -41,6 +45,7 @@ jobs:
       uses: oat-sa/tao-extension-ci-action@v0
       with:
         extension-name-config: tao-extension-name
+        test-suites-path: test/unit
 ```
 
 ## Publishing

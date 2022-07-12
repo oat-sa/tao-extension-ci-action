@@ -5,6 +5,10 @@ inputs:
     description: TAO extension name configuration field
     required: true
     default: tao-extension-name
+  test-suites-path:
+    description: Relative path to the test suits
+    required: true
+    default: test/unit
 runs:
   using: composite
   steps:
@@ -14,6 +18,25 @@ runs:
       env:
         EXTENSION_NAME_FIELD: ${{ inputs.extension-name-config }}
       run: echo ::set-output name=extension-name::$(composer config "extra.$EXTENSION_NAME_FIELD")
-    - name: Validate extension name
+    - name: Determine bootstrap path
+      id: bootstrap
       shell: bash
-      run: echo ${{ steps.configuration.outputs.extension-name }}
+      env:
+        EXTENSION_NAME: ${{ steps.configuration.outputs.extension-name }}
+      run: echo ::set-output name=path::$([ "$EXTENSION_NAME" = generis ] && echo test/bootstrap.php || echo generis/test/bootstrap.php)
+    - name: Disable NPM plugin
+      shell: bash
+      run: composer config allow-plugins.oat-sa/composer-npm-bridge false --no-plugins --no-interaction
+    - name: Allow TAO extension installer plugin
+      shell: bash
+      run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-plugins --no-interaction
+    - name: Install phpunit
+      shell: bash
+      run: composer require phpunit/phpunit --dev -W --no-interaction
+    - name: Execute Unit tests
+      shell: bash
+      env:
+        BOOTSTRAP: ${{ steps.bootstrap.outputs.path }}
+        TEST_SUITES: ${{ inputs.test-suites-path }}
+      run: vendor/bin/phpunit --bootstrap "$BOOTSTRAP" "$TEST_SUITES"
+
