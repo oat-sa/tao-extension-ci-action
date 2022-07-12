@@ -12,18 +12,17 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Set default phpunit configuration if it doesn't exist
+      shell: bash
+      run: mv -n "${{ github.action_path }}/phpunit.xml" .
     - name: Fetch extension's name
       id: configuration
       shell: bash
-      env:
-        EXTENSION_NAME_FIELD: ${{ inputs.extension-name-config }}
-      run: echo ::set-output name=extension-name::$(composer config "extra.$EXTENSION_NAME_FIELD")
+      run: echo ::set-output name=extension-name::$(composer config "extra.${{ inputs.extension-name-config }}")
     - name: Determine bootstrap path
       id: bootstrap
       shell: bash
-      env:
-        EXTENSION_NAME: ${{ steps.configuration.outputs.extension-name }}
-      run: echo ::set-output name=path::$([ "$EXTENSION_NAME" = generis ] && echo test/bootstrap.php || echo generis/test/bootstrap.php)
+      run: echo ::set-output name=path::$([ "${{ steps.configuration.outputs.extension-name }}" = generis ] && echo test/bootstrap.php || echo generis/test/bootstrap.php)
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --strict --no-interaction --no-plugins
@@ -36,10 +35,12 @@ runs:
     - name: Install phpunit
       shell: bash
       run: composer require phpunit/phpunit --dev -W --no-interaction
+    - name: Convert phpunit configuration
+      shell: bash
+      run: vendor/bin/phpunit --migrate-configuration || true
     - name: Execute Unit tests
       shell: bash
-      env:
-        BOOTSTRAP: ${{ steps.bootstrap.outputs.path }}
-        TEST_SUITES: ${{ inputs.test-suites-path }}
-      run: vendor/bin/phpunit --bootstrap "$BOOTSTRAP" "$TEST_SUITES"
-
+      run: php -dxdebug.mode=coverage vendor/bin/phpunit --bootstrap "${{ steps.bootstrap.outputs.path }}" --coverage-clover coverage.xml "${{ inputs.test-suites-path }}"
+    - name: Push coverage report
+      shell: bash
+      run: bash <(curl -s https://codecov.io/bash)
