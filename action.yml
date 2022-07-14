@@ -34,7 +34,7 @@ runs:
       run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-interaction --no-plugins
     - name: Install phpunit
       shell: bash
-      run: composer require phpunit/phpunit --dev -W --no-interaction
+      run: composer require "phpunit/phpunit:*" --dev -W --no-interaction
     - name: Convert phpunit configuration
       shell: bash
       run: vendor/bin/phpunit --migrate-configuration || true
