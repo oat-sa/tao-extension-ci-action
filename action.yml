@@ -1,6 +1,9 @@
 name: TAO extension CI
 description: Executes a CI pipeline on a TAO extension
 inputs:
+  php:
+    description: PHP version to power the CI
+    required: true
   extension-name-config:
     description: TAO extension name configuration field
     required: true
@@ -12,6 +15,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: actions/checkout@v3
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php }}
     - name: Set default phpunit configuration if it doesn't exist
       shell: bash
       run: mv -n "${{ github.action_path }}/phpunit.xml" .
@@ -41,6 +48,4 @@ runs:
     - name: Execute Unit tests
       shell: bash
       run: php -dxdebug.mode=coverage vendor/bin/phpunit --bootstrap "${{ steps.bootstrap.outputs.path }}" --coverage-clover coverage.xml "${{ inputs.test-suites-path }}"
-    - name: Push coverage report
-      shell: bash
-      run: bash <(curl -s https://codecov.io/bash)
+    - uses: codecov/codecov-action@v3
