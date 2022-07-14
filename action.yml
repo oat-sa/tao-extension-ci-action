@@ -25,7 +25,7 @@ runs:
       run: echo ::set-output name=path::$([ "${{ steps.configuration.outputs.extension-name }}" = generis ] && echo test/bootstrap.php || echo generis/test/bootstrap.php)
     - name: Validate dependencies' list
       shell: bash
-      run: composer validate --strict --no-interaction --no-plugins
+      run: composer validate --no-interaction --no-plugins
     - name: Disable NPM plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/composer-npm-bridge false --no-interaction --no-plugins
