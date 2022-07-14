@@ -18,7 +18,7 @@ runs:
     - name: Fetch extension's name
       id: configuration
       shell: bash
-      run: echo ::set-output name=extension-name::$(composer config "extra.${{ inputs.extension-name-config }}")
+      run: echo ::set-output name=extension-name::$(composer config "extra.${{ inputs.extension-name-config }}" --no-interaction --no-plugins)
     - name: Determine bootstrap path
       id: bootstrap
       shell: bash
@@ -28,10 +28,10 @@ runs:
       run: composer validate --strict --no-interaction --no-plugins
     - name: Disable NPM plugin
       shell: bash
-      run: composer config allow-plugins.oat-sa/composer-npm-bridge false --no-plugins --no-interaction
+      run: composer config allow-plugins.oat-sa/composer-npm-bridge false --no-interaction --no-plugins
     - name: Allow TAO extension installer plugin
       shell: bash
-      run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-plugins --no-interaction
+      run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-interaction --no-plugins
     - name: Install phpunit
       shell: bash
       run: composer require phpunit/phpunit --dev -W --no-interaction
