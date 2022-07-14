@@ -11,6 +11,10 @@ This action produces a TAO Extension name as an output.
 
 a version of PHP to power the CI
 
+### `coverage` (optional)
+
+a boolean flag, controls whether a coverage report is needed
+
 ### `extension-name-config` (optional)
 
 a composer package extra configuration field name to look up the TAO extension name
@@ -38,13 +42,17 @@ jobs:
     strategy:
       matrix:
         operating-system: [ ubuntu-latest ]
-        php-versions: [ '7.2', '7.3', '7.4', '8.0', '8.1' ]
+        php-version: [ '7.2', '7.3', '7.4', '8.0', '8.1' ]
+        include:
+          - php-version: '7.2'
+            coverage: true
 
     steps:
       - name: CI
         uses: oat-sa/tao-extension-ci-action@v0
         with:
-          php: ${{ matrix.php-versions }}
+          php: ${{ matrix.php-version }}
+          coverage: ${{ matrix.coverage }}
           extension-name-config: tao-extension-name
           test-suites-path: test/unit
 

@@ -4,13 +4,18 @@ inputs:
   php:
     description: PHP version to power the CI
     required: true
+  coverage:
+    description: Boolean flag controlling whether or not the pipeline will generate a code coverage report
+    required: false
+    type: boolean
+    default: false
   extension-name-config:
     description: TAO extension name configuration field
-    required: true
+    required: false
     default: tao-extension-name
   test-suites-path:
     description: Relative path to the test suits
-    required: true
+    required: false
     default: test/unit
 runs:
   using: composite
@@ -47,5 +52,6 @@ runs:
       run: vendor/bin/phpunit --migrate-configuration || true
     - name: Execute Unit tests
       shell: bash
-      run: php -dxdebug.mode=coverage vendor/bin/phpunit --bootstrap "${{ steps.bootstrap.outputs.path }}" --coverage-clover coverage.xml "${{ inputs.test-suites-path }}"
+      run: vendor/bin/phpunit --bootstrap "${{ steps.bootstrap.outputs.path }}"${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "${{ inputs.test-suites-path }}"
     - uses: codecov/codecov-action@v3
+      if: ${{ inputs.coverage }}
