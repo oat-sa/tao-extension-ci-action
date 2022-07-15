@@ -15,10 +15,6 @@ a version of PHP to power the CI
 
 a boolean flag, controls whether a coverage report is needed
 
-### `extension-name-config` (optional)
-
-a composer package extra configuration field name to look up the TAO extension name
-
 ### `test-suites-path` (optional)
 
 path to the extension's test suites
@@ -53,7 +49,6 @@ jobs:
         with:
           php: ${{ matrix.php-version }}
           coverage: ${{ matrix.coverage }}
-          extension-name-config: tao-extension-name
           test-suites-path: test/unit
 
 ```

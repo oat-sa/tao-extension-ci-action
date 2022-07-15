@@ -9,10 +9,6 @@ inputs:
     required: false
     type: boolean
     default: false
-  extension-name-config:
-    description: TAO extension name configuration field
-    required: false
-    default: tao-extension-name
   test-suites-path:
     description: Relative path to the test suits
     required: false
@@ -24,34 +20,45 @@ runs:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ inputs.php }}
-    - name: Set default phpunit configuration if it doesn't exist
+    - name: Fetch extension's properties
+      id: extension
       shell: bash
-      run: mv -n "${{ github.action_path }}/phpunit.xml" .
-    - name: Fetch extension's name
-      id: configuration
-      shell: bash
-      run: echo ::set-output name=extension-name::$(composer config "extra.${{ inputs.extension-name-config }}" --no-interaction --no-plugins)
-    - name: Determine bootstrap path
-      id: bootstrap
-      shell: bash
-      run: echo ::set-output name=path::$([ "${{ steps.configuration.outputs.extension-name }}" = generis ] && echo test/bootstrap.php || echo generis/test/bootstrap.php)
+      run: |
+        echo ::set-output name=name::$(composer config name --no-interaction --no-plugins)
+        echo ::set-output name=ref::"$([ -z "$(git branch --show-current)" ] && git rev-parse --verify HEAD || git branch --show-current)"
+        echo ::set-output name=dependencies::$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}')
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
+    - name: Move sources
+      shell: bash
+      run: mkdir src && mv * src || true
+    - name: Initialize composer dependencies
+      shell: bash
+      run: composer init --name oat-sa/tao-extension-ci-action --no-interaction && composer config repositories.0 path ./src --no-interaction
     - name: Disable NPM plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/composer-npm-bridge false --no-interaction --no-plugins
     - name: Allow TAO extension installer plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-interaction --no-plugins
-    - name: Install phpunit
+    - name: Set dev stability as a minimum
       shell: bash
-      run: composer require "phpunit/phpunit:*" --dev -W --no-interaction
+      run: composer config minimum-stability dev
+    - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
+      shell: bash
+      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:*" ${{ steps.extension.outputs.dependencies }}
+    - name: Set phpunit coverage configuration
+      shell: bash
+      run: mv -n "${{ github.action_path }}/phpunit.xml" .
     - name: Convert phpunit configuration
       shell: bash
       run: vendor/bin/phpunit --migrate-configuration || true
+    - name: Set phpunit bootstrap
+      shell: bash
+      run: mv -n "${{ github.action_path }}/bootstrap.php" .
     - name: Execute Unit tests
       shell: bash
-      run: vendor/bin/phpunit --bootstrap "${{ steps.bootstrap.outputs.path }}"${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "${{ inputs.test-suites-path }}"
+      run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
