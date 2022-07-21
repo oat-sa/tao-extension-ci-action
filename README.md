@@ -24,12 +24,20 @@ path to the extension's test suites
 This action expects to run on a git repo of a TAO extension.
 
 The Action will take care of codebase checkout and PHP installation,
-as well as of optionally generating and pushing coverage reports
+as well as of optionally generating and pushing coverage reports.
+
+Should your extension rely on any of the `oat-sa` organization's private repositories,
+kindly make sure to specify [`COMPOSER_AUTH`](https://getcomposer.org/doc/03-cli.md#composer-auth) environment variable.
 
 ```yaml
 on:
+  push:
+    branches: [ master, develop ]
   pull_request:
     branches: [ develop ]
+
+env:
+  COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.CI_GITHUB_TOKEN }}"}}'
 
 jobs:
   ci:
