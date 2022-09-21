@@ -62,3 +62,6 @@ runs:
       run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
+    - name: Run PHP Code Sniffer PSR-12 check
+      shell: bash
+      run: vendor/bin/phpcs --standard=PSR12 -v actions config helpers includes migrations models/classes scripts test
