@@ -63,7 +63,6 @@ runs:
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
     - uses: jitterbit/get-changed-files@v1
-      shell: bash
       id: files
       with:
         format: 'csv'
