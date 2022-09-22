@@ -90,4 +90,4 @@ runs:
             echo "There are no changes in PHP files (no PSR-12 test performed)"
         fi
         rm "$FILELIST"
-        exit $RETVA  
+        exit $RETVAL
