@@ -66,6 +66,10 @@ runs:
       uses: jitterbit/get-changed-files@v1
       with:
         format: 'csv'
+    - id: files
+      uses: jitterbit/get-changed-files@v1
+      with:
+        format: 'csv'
     - run: |
         FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
         mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
@@ -78,7 +82,7 @@ runs:
             fi
         done
         if [ -s "${FILELIST}" ]; then
-            vendor/bin/phpcs --standard=PSR12 -v --file-list="${FILELIST}"
+            vendor/bin/phpcs --standard=PSR12 --exclude=PSR1.Classes.ClassDeclaration -v --file-list="${FILELIST}"
             RETVAL=$?
             echo "The following files were tested for PSR-12 errors:"; echo 
             cat -n "$FILELIST"
@@ -86,4 +90,4 @@ runs:
             echo "There are no changes in PHP files (no PSR-12 test performed)"
         fi
         rm "$FILELIST"
-        exit $RETVAL
+        exit $RETVA  
