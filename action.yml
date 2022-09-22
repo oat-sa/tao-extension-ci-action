@@ -63,10 +63,11 @@ runs:
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
     - uses: jitterbit/get-changed-files@v1
+      shell: bash
       id: files
       with:
         format: 'csv'
-    - run: |
+      run: |
         FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
         mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
         for FILE in "${added_modified_files[@]}"; do
