@@ -62,12 +62,8 @@ runs:
       run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
-    - id: files
-      uses: jitterbit/get-changed-files@v1
-      with:
-        format: 'csv'
-    - id: files
-      uses: jitterbit/get-changed-files@v1
+    - uses: jitterbit/get-changed-files@v1
+      id: files
       with:
         format: 'csv'
     - run: |
