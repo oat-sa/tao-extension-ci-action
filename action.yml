@@ -66,7 +66,9 @@ runs:
       id: files
       with:
         format: 'csv'
-    - run: |
+    - name: Execute script for filter
+      shell: bash
+      run: |
         FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
         mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
         for FILE in "${added_modified_files[@]}"; do
