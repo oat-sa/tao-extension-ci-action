@@ -67,4 +67,15 @@ Actions are released as tags:
 - one tag that reflects the exact version
 - a major version tag that points to the last tag of that version
 
-For example, when releasing the version `v1.2.3`, ensure the tag `v1` points to that version as well.
+For example, when releasing the version `v1.2.3`, ensure the tag `v1` points to that version as well. 
+Check the code example bellow:  
+
+```shell
+git fetch
+git checkout main
+git pull
+git tag -d v1
+git tag v1
+git push origin :v1
+git push origin v1
+```
