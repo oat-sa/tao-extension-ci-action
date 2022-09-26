@@ -75,7 +75,7 @@ runs:
             EXT="${FILE##*.}"
             echo "Changed file: " $FILE ", extension: " $EXT
             if [ "$EXT" == "php" ]; then
-              echo "${FILE}" >> "${FILELIST}"
+              echo "src/${FILE}" >> "${FILELIST}"
               echo "File added to the file list: " $FILE
             fi
         done
