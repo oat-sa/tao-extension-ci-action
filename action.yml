@@ -47,7 +47,7 @@ runs:
       run: composer config minimum-stability dev
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
-      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:*" "phpspec/prophecy:*" ${{ steps.extension.outputs.dependencies }}
+      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:*" "phpspec/prophecy:*" "squizlabs/php_codesniffer:*" ${{ steps.extension.outputs.dependencies }}
     - name: Set phpunit coverage configuration
       shell: bash
       run: mv -n "${{ github.action_path }}/phpunit.xml" .
