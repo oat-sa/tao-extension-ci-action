@@ -47,7 +47,7 @@ runs:
       run: composer config minimum-stability dev
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
-      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:*" "phpspec/prophecy:*" ${{ steps.extension.outputs.dependencies }}
+      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:*" "phpspec/prophecy:*" "squizlabs/php_codesniffer:*" ${{ steps.extension.outputs.dependencies }}
     - name: Set phpunit coverage configuration
       shell: bash
       run: mv -n "${{ github.action_path }}/phpunit.xml" .
@@ -62,3 +62,30 @@ runs:
       run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
+    - uses: jitterbit/get-changed-files@v1
+      id: files
+      with:
+        format: 'csv'
+    - name: Execute script for filter
+      shell: bash
+      run: |
+        FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
+        mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
+        for FILE in "${added_modified_files[@]}"; do
+            EXT="${FILE##*.}"
+            echo "Changed file: " $FILE ", extension: " $EXT
+            if [ "$EXT" == "php" ]; then
+              echo "src/${FILE}" >> "${FILELIST}"
+              echo "File added to the file list: " $FILE
+            fi
+        done
+        if [ -s "${FILELIST}" ]; then
+            vendor/bin/phpcs --standard=PSR12 --exclude=PSR1.Classes.ClassDeclaration -v --file-list="${FILELIST}"
+            RETVAL=$?
+            echo "The following files were tested for PSR-12 errors:"; echo 
+            cat -n "$FILELIST"
+        else
+            echo "There are no changes in PHP files (no PSR-12 test performed)"
+        fi
+        rm "$FILELIST"
+        exit $RETVAL
