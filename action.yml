@@ -30,6 +30,9 @@ runs:
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
+    - name: Configure authorization for private repositories
+      shell: bash
+      run: composer config -g github-oauth.github.com ${{ secrets.CI_GITHUB_TOKEN }}
     - name: Move sources
       shell: bash
       run: mkdir src && mv * src || true
