@@ -13,6 +13,10 @@ inputs:
     description: Relative path to the test suits
     required: false
     default: test/unit
+  github_token:
+     description: Pass the CI_GITHUB_TOKEN when calling this workflow
+     default: ''
+     required: false
 runs:
   using: composite
   steps:
@@ -32,7 +36,8 @@ runs:
       run: composer validate --no-interaction --no-plugins
     - name: Configure authorization for private repositories
       shell: bash
-      run: composer config -g github-oauth.github.com ${{ secrets.CI_GITHUB_TOKEN }}
+      run: composer config -g github-oauth.github.com ${{ inputs.github_token }}
+      if: ${{ inputs.github_token }}
     - name: Move sources
       shell: bash
       run: mkdir src && mv * src || true
