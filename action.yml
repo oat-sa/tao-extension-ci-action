@@ -28,9 +28,9 @@ runs:
       id: extension
       shell: bash
       run: |
-        echo ::set-output name=name::$(composer config name --no-interaction --no-plugins)
-        echo ::set-output name=ref::"$([ -z "$(git branch --show-current)" ] && git rev-parse --verify HEAD || git branch --show-current)"
-        echo ::set-output name=dependencies::$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}')
+        echo name=$(composer config name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
+        echo ref="$([ -z "$(git branch --show-current)" ] && git rev-parse --verify HEAD || git branch --show-current)" >> $GITHUB_OUTPUT
+        echo dependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
