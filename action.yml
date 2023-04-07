@@ -30,7 +30,8 @@ runs:
       run: |
         echo name=$(composer config name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
         echo ref="$([ -z "$(git branch --show-current)" ] && git rev-parse --verify HEAD || git branch --show-current)" >> $GITHUB_OUTPUT
-        echo dependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
+        echo dependencies=$(composer show --self --direct | grep -E "\sdev-[^\s]+\sas\s" | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
+        echo devDependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
@@ -55,7 +56,7 @@ runs:
       run: composer config minimum-stability dev
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
-      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }}
+      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.devDependencies }}
     - name: Set phpunit coverage configuration
       shell: bash
       run: mv -n "${{ github.action_path }}/phpunit.xml" .
