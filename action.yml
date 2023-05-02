@@ -24,8 +24,8 @@ runs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ inputs.php }}
-      - id: extension
-        name: Fetch extension's properties
+      - name: Fetch extension's properties
+        id: extension
         shell: bash
         run: |
           echo name=$(composer config name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
@@ -75,8 +75,7 @@ runs:
         id: files
         with:
           format: 'csv'
-      - id: psr-12-check
-        name: Execute PSR-12 check
+      - name: Execute script for filter
         shell: bash
         run: |
           FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
