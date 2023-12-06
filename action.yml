@@ -9,6 +9,10 @@ inputs:
     required: false
     type: boolean
     default: false
+  node-version:
+    description: Node version to run the client-side tests with
+    required: false
+    default: '18'
   test-suites-path:
     description: Relative path to the test suits
     required: false
@@ -28,10 +32,17 @@ runs:
       id: extension
       shell: bash
       run: |
+        echo id=$(composer config extra.tao-extension-name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
         echo name=$(composer config name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
         echo ref="$([ -z "$(git branch --show-current)" ] && git rev-parse --verify HEAD || git branch --show-current)" >> $GITHUB_OUTPUT
         echo dependencies=$(composer show --self --direct | grep -E "\sdev-[^\s]+\sas\s" | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
-        echo devDependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
+        echo dev-dependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
+        echo node-version=$([[ "${{ inputs.coverage }}" && "${{ inputs.node-version }}" && -f views/build/grunt/test.js ]] && echo "${{ inputs.node-version }}") >> $GITHUB_OUTPUT
+    - name: Use Node.js ${{ steps.extension.outputs.node-version }}
+      if: ${{ steps.extension.outputs.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ steps.extension.outputs.node-version }}
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
@@ -45,9 +56,9 @@ runs:
     - name: Initialize composer dependencies
       shell: bash
       run: composer init --name oat-sa/tao-extension-ci-action --no-interaction && composer config repositories.0 path ./src --no-interaction
-    - name: Disable NPM plugin
+    - name: Configure NPM plugin
       shell: bash
-      run: composer config allow-plugins.oat-sa/composer-npm-bridge false --no-interaction --no-plugins
+      run: composer config allow-plugins.oat-sa/composer-npm-bridge ${{ steps.extension.outputs.node-version && 'true' || 'false' }} --no-interaction --no-plugins
     - name: Allow TAO extension installer plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-interaction --no-plugins
@@ -56,7 +67,55 @@ runs:
       run: composer config minimum-stability dev
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
-      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.devDependencies }}
+      run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.dev-dependencies }}
+    - name: Generate localization files
+      if: ${{ steps.extension.outputs.node-version }}
+      shell: bash
+      run: php tao/scripts/tools/GenerateTranslationBundles.php
+    - name: Front-end tests
+      if: ${{ steps.extension.outputs.node-version }}
+      shell: bash
+      working-directory: tao/views/build
+      run: |
+        npm ci
+        npx grunt connect:test qunit_junit $(echo ${{ steps.extension.outputs.id }} | awk '{print tolower($0)}')test --force --reports=../../../junit-reports
+    - name: Publish the front-end test report
+      if: ${{ steps.extension.outputs.node-version }}
+      uses: mikepenz/action-junit-report@v3
+      id: fe-junit
+      with:
+        job_summary: false
+    - name: Front-end job summary
+      if: ${{ steps.extension.outputs.node-version }}
+      uses: mathiasvr/command-output@v2.0.0
+      id: fe-summary
+      with:
+        run: |
+          cat << EOF
+          # Front-end summary Node ${{ steps.extension.outputs.node-version }}
+          |💯 Total|✅ Passed|⏭️ Skipped|❌ Failed|
+          |-|-|-|-|
+          |${{ steps.fe-junit.outputs.total }}|${{ steps.fe-junit.outputs.passed }}|${{ steps.fe-junit.outputs.skipped }}|${{ steps.fe-junit.outputs.failed }}|
+          EOF
+    - uses: peter-evans/find-comment@v2
+      id: fe-summary-comment
+      if: ${{ github.event_name == 'pull_request' && steps.extension.outputs.node-version }}
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: Front-end summary Node ${{ steps.extension.outputs.node-version }}
+    - name: Create or update front-end summary comment
+      uses: peter-evans/create-or-update-comment@v2
+      if: ${{ github.event_name == 'pull_request' && steps.extension.outputs.node-version }}
+      with:
+        comment-id: ${{ steps.fe-summary-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body: ${{ steps.fe-summary.outputs.stdout }}
+        edit-mode: replace
+    - name: Front-end job summary
+      if: ${{ steps.extension.outputs.node-version }}
+      shell: bash
+      run: echo "${{ steps.fe-summary.outputs.stdout }}" >> $GITHUB_STEP_SUMMARY
     - name: Set phpunit coverage configuration
       shell: bash
       run: mv -n "${{ github.action_path }}/phpunit.xml" .
@@ -66,7 +125,7 @@ runs:
     - name: Set phpunit bootstrap
       shell: bash
       run: mv -n "${{ github.action_path }}/bootstrap.php" .
-    - name: Execute Unit tests
+    - name: Back-end tests
       shell: bash
       run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
     - uses: codecov/codecov-action@v3
@@ -98,3 +157,7 @@ runs:
         fi
         rm "$FILELIST"
         exit $RETVAL
+    - name: Fail the job if front-end tests weren't OK
+      if: ${{ steps.extension.outputs.node-version }}
+      shell: bash
+      run: exit ${{ steps.fe-junit.outputs.failed }}
