@@ -28,6 +28,7 @@ runs:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ inputs.php }}
+
     - name: Fetch extension's properties
       id: extension
       shell: bash
@@ -38,40 +39,51 @@ runs:
         echo dependencies=$(composer show --self --direct | grep -E "\sdev-[^\s]+\sas\s" | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
         echo dev-dependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
         echo node-version=$([[ "${{ inputs.coverage }}" && "${{ inputs.node-version }}" && -f views/build/grunt/test.js ]] && echo "${{ inputs.node-version }}") >> $GITHUB_OUTPUT
+
     - name: Use Node.js ${{ steps.extension.outputs.node-version }}
       if: ${{ steps.extension.outputs.node-version }}
       uses: actions/setup-node@v3
       with:
         node-version: ${{ steps.extension.outputs.node-version }}
+
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
+
     - name: Configure authorization for private repositories
       shell: bash
       run: composer config -g github-oauth.github.com ${{ inputs.github_token }}
       if: ${{ inputs.github_token }}
+
     - name: Move sources
       shell: bash
       run: mkdir src && mv * src || true
+
     - name: Initialize composer dependencies
       shell: bash
       run: composer init --name oat-sa/tao-extension-ci-action --no-interaction && composer config repositories.0 path ./src --no-interaction
+
     - name: Configure NPM plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/composer-npm-bridge ${{ steps.extension.outputs.node-version && 'true' || 'false' }} --no-interaction --no-plugins
+
     - name: Allow TAO extension installer plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/oatbox-extension-installer true --no-interaction --no-plugins
+
     - name: Set dev stability as a minimum
       shell: bash
       run: composer config minimum-stability dev
+
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
       run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.dev-dependencies }}
+
     - name: Generate localization files
       if: ${{ steps.extension.outputs.node-version }}
       shell: bash
       run: php tao/scripts/tools/GenerateTranslationBundles.php
+
     - name: Front-end tests
       if: ${{ steps.extension.outputs.node-version }}
       shell: bash
@@ -79,12 +91,14 @@ runs:
       run: |
         npm ci
         npx grunt connect:test qunit_junit $(echo ${{ steps.extension.outputs.id }} | awk '{print tolower($0)}')test --force --reports=../../../junit-reports
+
     - name: Publish the front-end test report
       if: ${{ steps.extension.outputs.node-version }}
       uses: mikepenz/action-junit-report@v3
       id: fe-junit
       with:
         job_summary: false
+
     - name: Front-end job summary
       if: ${{ steps.extension.outputs.node-version }}
       uses: mathiasvr/command-output@v2.0.0
@@ -97,6 +111,7 @@ runs:
           |-|-|-|-|
           |${{ steps.fe-junit.outputs.total }}|${{ steps.fe-junit.outputs.passed }}|${{ steps.fe-junit.outputs.skipped }}|${{ steps.fe-junit.outputs.failed }}|
           EOF
+
     - uses: peter-evans/find-comment@v2
       id: fe-summary-comment
       if: ${{ github.event_name == 'pull_request' && steps.extension.outputs.node-version }}
@@ -104,6 +119,7 @@ runs:
         issue-number: ${{ github.event.pull_request.number }}
         comment-author: 'github-actions[bot]'
         body-includes: Front-end summary Node ${{ steps.extension.outputs.node-version }}
+
     - name: Create or update front-end summary comment
       uses: peter-evans/create-or-update-comment@v2
       if: ${{ github.event_name == 'pull_request' && steps.extension.outputs.node-version }}
@@ -112,29 +128,37 @@ runs:
         issue-number: ${{ github.event.pull_request.number }}
         body: ${{ steps.fe-summary.outputs.stdout }}
         edit-mode: replace
+
     - name: Front-end job summary
       if: ${{ steps.extension.outputs.node-version }}
       shell: bash
       run: echo "${{ steps.fe-summary.outputs.stdout }}" >> $GITHUB_STEP_SUMMARY
+
     - name: Set phpunit coverage configuration
       shell: bash
       run: mv -n "${{ github.action_path }}/phpunit.xml" .
+
     - name: Convert phpunit configuration
       shell: bash
       run: vendor/bin/phpunit --migrate-configuration || true
+
     - name: Set phpunit bootstrap
       shell: bash
       run: mv -n "${{ github.action_path }}/bootstrap.php" .
+
     - name: Back-end tests
       shell: bash
       run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
+
     - uses: codecov/codecov-action@v3
       if: ${{ inputs.coverage }}
+
     - uses: Ana06/get-changed-files@v2.2.0
       id: files
       with:
         format: 'csv'
-    - name: Execute script for filter
+
+    - name: Run PSR-12 checks
       shell: bash
       run: |
         FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
@@ -157,6 +181,34 @@ runs:
         fi
         rm "$FILELIST"
         exit $RETVAL
+
+    - name: Run PHP Mess Detector checks
+      shell: bash
+      run: |
+        FILELIST=$(mktemp /tmp/phpmd-check.XXXXXX)
+        mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
+        for FILE in "${added_modified_files[@]}"; do
+          EXT="${FILE##*.}"
+          echo "Changed file: " $FILE ", extension: " $EXT
+          if [[ "$EXT" == "php" && $FILE != migrations/Version* ]]; then
+            echo "src/${FILE}" >> "${FILELIST}"
+            echo "File added to the file list: " $FILE
+          fi
+        done
+        if [ -s "${FILELIST}" ]; then
+          FILES=`cat $FILELIST | paste -sd "," -`
+          echo "Running PHPMD on" $FILES
+          # TODO Allow extension to override the ruleset
+          phpmd $FILES github ${GITHUB_ACTION_PATH}/.github/phpmd-ruleset.xml --exclude 'vendor/*'
+          RETVAL=$?
+          echo "The following files were tested against the PHP-MD ruleset:"; echo
+          cat -n "$FILELIST"
+        else
+          echo "There are no changes in PHP files (no PHP-MD test performed)"
+        fi
+        rm "$FILELIST"
+        exit $RETVAL
+
     - name: Fail the job if front-end tests weren't OK
       if: ${{ steps.extension.outputs.node-version }}
       shell: bash
