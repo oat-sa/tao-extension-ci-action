@@ -184,6 +184,7 @@ runs:
         exit $RETVAL
 
     - name: Run PHP Mess Detector checks
+      continue-on-error: true
       shell: bash
       run: |
         FILELIST=$(mktemp /tmp/phpmd-check.XXXXXX)
@@ -199,8 +200,6 @@ runs:
         if [ -s "${FILELIST}" ]; then
           FILES=`cat $FILELIST | paste -sd "," -`
           RULESET=${GITHUB_ACTION_PATH}/.github/phpmd-ruleset.xml
-          echo "ls root"; ls
-          echo ls "${GITHUB_WORKSPACE}"; ls "${GITHUB_WORKSPACE}"
           if [ -f "${GITHUB_WORKSPACE}/phpmd-ruleset.xml" ]; then
             RULESET="${GITHUB_WORKSPACE}/phpmd-ruleset.xml"
             echo "Using a custom PHP-MD ruleset provided by the extension at ${RULESET}" 
@@ -210,7 +209,7 @@ runs:
             echo "Using a custom PHP-MD ruleset provided by the extension at ${RULESET}" 
           fi
           echo "Running PHPMD with RULESET ${RULESET} on ${FILES}"
-          phpmd $FILES github $RULESET --exclude 'vendor/*'
+          phpmd $FILES sarif $RULESET --exclude 'vendor/*' --reportfile phpmd-results.sarif
           RETVAL=$?
           echo "The following files were tested against the PHP-MD ruleset:"; echo
           cat -n "$FILELIST"
@@ -219,6 +218,12 @@ runs:
         fi
         rm "$FILELIST"
         exit $RETVAL
+
+    - name: Upload analysis results to GitHub
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: phpmd-results.sarif
+        wait-for-processing: true
 
     - name: Fail the job if front-end tests weren't OK
       if: ${{ steps.extension.outputs.node-version }}
