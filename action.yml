@@ -184,6 +184,7 @@ runs:
         exit $RETVAL
 
     - name: Run PHP Mess Detector checks
+      id: phpmd-checks
       continue-on-error: true
       shell: bash
       run: |
@@ -212,18 +213,33 @@ runs:
           phpmd $FILES sarif $RULESET --exclude 'vendor/*' --reportfile phpmd-results.sarif
           RETVAL=$?
           echo "The following files were tested against the PHP-MD ruleset:"; echo
-          cat -n "$FILELIST"
+          cat -n "$FILELIST"; rm "$FILELIST"
+          if [ $RETVAL -ne 0 ]; then
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
         else
-          echo "There are no changes in PHP files (no PHP-MD test performed)"
+          echo "There are no changes in PHP files (no PHP-MD test performed)"          
+          echo "ok=true" >> "$GITHUB_OUTPUT"
         fi
-        rm "$FILELIST"
+        echo exit $RETVAL
         exit $RETVAL
 
     - name: Upload analysis results to GitHub
       uses: github/codeql-action/upload-sarif@v2
+      if: ${{ hashFiles('phpmd-results.sarif') != '' }}
       with:
         sarif_file: phpmd-results.sarif
         wait-for-processing: true
+
+    - name: Fail the job if the phpmd tests did not pass
+      shell: bash
+      run: |
+        if [ "${{ steps.phpmd-checks.outputs.ok }}" != "true" ]; then 
+          echo "phpmd tests failed"
+          exit 1
+        fi
 
     - name: Fail the job if front-end tests weren't OK
       if: ${{ steps.extension.outputs.node-version }}
