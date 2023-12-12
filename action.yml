@@ -198,9 +198,13 @@ runs:
         done
         if [ -s "${FILELIST}" ]; then
           FILES=`cat $FILELIST | paste -sd "," -`
-          echo "Running PHPMD on" $FILES
-          # TODO Allow extension to override the ruleset
-          phpmd $FILES github ${GITHUB_ACTION_PATH}/.github/phpmd-ruleset.xml --exclude 'vendor/*'
+          RULESET=${GITHUB_ACTION_PATH}/.github/phpmd-ruleset.xml
+          if [ -f "phpmd-ruleset.xml" ]; then
+            # Use the ruleset provided by the extension
+            RULESET="phpmd-ruleset.xml"
+          fi
+          echo "Running PHPMD with RULESET ${RULESET} on ${FILES}"
+          phpmd $FILES github $RULESET --exclude 'vendor/*'
           RETVAL=$?
           echo "The following files were tested against the PHP-MD ruleset:"; echo
           cat -n "$FILELIST"
