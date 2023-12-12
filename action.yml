@@ -191,7 +191,7 @@ runs:
         for FILE in "${added_modified_files[@]}"; do
           EXT="${FILE##*.}"
           echo "Changed file: " $FILE ", extension: " $EXT
-          if [[ "$EXT" == "php" && $FILE != migrations/Version* ]]; then
+          if [[ "$EXT" == "php" ]]; then
             echo "src/${FILE}" >> "${FILELIST}"
             echo "File added to the file list: " $FILE
           fi
