@@ -199,9 +199,15 @@ runs:
         if [ -s "${FILELIST}" ]; then
           FILES=`cat $FILELIST | paste -sd "," -`
           RULESET=${GITHUB_ACTION_PATH}/.github/phpmd-ruleset.xml
-          if [ -f "phpmd-ruleset.xml" ]; then
-            # Use the ruleset provided by the extension
-            RULESET="phpmd-ruleset.xml"
+          echo "ls root"; ls
+          echo ls "${GITHUB_WORKSPACE}"; ls "${GITHUB_WORKSPACE}"
+          if [ -f "${GITHUB_WORKSPACE}/phpmd-ruleset.xml" ]; then
+            RULESET="${GITHUB_WORKSPACE}/phpmd-ruleset.xml"
+            echo "Using a custom PHP-MD ruleset provided by the extension at ${RULESET}" 
+          elif [ -f "${GITHUB_WORKSPACE}/src/phpmd-ruleset.xml" ]; then
+            # A previous step may have moved all extension files to a 'src' directory
+            RULESET="${GITHUB_WORKSPACE}/src/phpmd-ruleset.xml"
+            echo "Using a custom PHP-MD ruleset provided by the extension at ${RULESET}" 
           fi
           echo "Running PHPMD with RULESET ${RULESET} on ${FILES}"
           phpmd $FILES github $RULESET --exclude 'vendor/*'
