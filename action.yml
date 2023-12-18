@@ -200,7 +200,7 @@ runs:
         done
         if [ -s "${FILELIST}" ]; then
           FILES=`cat $FILELIST | paste -sd "," -`
-          RULESET=${GITHUB_ACTION_PATH}/.github/phpmd-ruleset.xml
+          RULESET=${GITHUB_ACTION_PATH}/phpmd-ruleset.xml
           if [ -f "${GITHUB_WORKSPACE}/phpmd-ruleset.xml" ]; then
             RULESET="${GITHUB_WORKSPACE}/phpmd-ruleset.xml"
             echo "Using a custom PHP-MD ruleset provided by the extension at ${RULESET}" 
