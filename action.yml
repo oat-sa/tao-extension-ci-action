@@ -223,7 +223,6 @@ runs:
           echo "There are no changes in PHP files (no PHP-MD test performed)"          
           echo "ok=true" >> "$GITHUB_OUTPUT"
         fi
-        echo exit $RETVAL
         exit $RETVAL
 
     - name: Upload analysis results to GitHub
