@@ -187,7 +187,18 @@ runs:
       id: phpmd-checks
       continue-on-error: true
       shell: bash
-      run: bash "${{ github.action_path }}/run-phpmd.sh"
+      run: |
+        FILELIST=$(mktemp /tmp/phpmd-check.XXXXXX)
+        mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
+        for FILE in "${added_modified_files[@]}"; do
+          EXT="${FILE##*.}"
+          echo "Changed file: " $FILE ", extension: " $EXT
+          if [[ "$EXT" == "php" ]]; then
+            echo "src/${FILE}" >> "${FILELIST}"
+            echo "File added to the file list: " $FILE
+          fi
+        done
+        source "${{ github.action_path }}/run-phpmd.sh"
 
     - name: Upload analysis results to GitHub
       uses: github/codeql-action/upload-sarif@v2
