@@ -125,16 +125,26 @@ runs:
     - name: Set phpunit bootstrap
       shell: bash
       run: mv -n "${{ github.action_path }}/bootstrap.php" .
+    - id: check_back_end_test
+      uses: andstor/file-existence-action@v3
+      with:
+        files: src/${{ inputs.test-suites-path }}
     - name: Back-end tests
+      id: backend_test
+      if: steps.check_back_end_test.outputs.files_exists == 'true'
       shell: bash
-      run: vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
+      run: |
+        vendor/bin/phpunit --bootstrap bootstrap.php${{ inputs.coverage && ' --coverage-clover coverage.xml' }} "src/${{ inputs.test-suites-path }}"
+        echo "completed='true'" >> $GITHUB_OUTPUT
     - uses: codecov/codecov-action@v3
-      if: ${{ inputs.coverage }}
+      if: ${{ inputs.coverage && steps.files.backend_test.completed }}
     - uses: Ana06/get-changed-files@v2.2.0
       id: files
+      if: github.event_name == 'pull_request'
       with:
         format: 'csv'
     - name: Execute script for filter
+      if: github.event_name == 'pull_request'
       shell: bash
       run: |
         FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
