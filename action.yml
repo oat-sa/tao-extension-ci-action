@@ -28,6 +28,7 @@ runs:
     - uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ inputs.php }}
+    - uses: dcarbone/install-jq-action@v2
     - name: Fetch extension's properties
       id: extension
       shell: bash
@@ -55,7 +56,7 @@ runs:
       run: mkdir src && mv * src || true
     - name: Initialize composer dependencies
       shell: bash
-      run: composer init --name oat-sa/tao-extension-ci-action --no-interaction && composer config repositories.0 path ./src --no-interaction
+      run: composer init --name oat-sa/tao-extension-ci-action --no-interaction && composer config repositories.0 path ./src --no-interaction && jq ".repositories += $(jq '.repositories' src/composer.json)" composer.json > composer-tmp.json && mv composer-tmp.json composer.json
     - name: Configure NPM plugin
       shell: bash
       run: composer config allow-plugins.oat-sa/composer-npm-bridge ${{ steps.extension.outputs.node-version && 'true' || 'false' }} --no-interaction --no-plugins
