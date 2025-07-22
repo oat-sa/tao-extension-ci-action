@@ -88,6 +88,7 @@ runs:
               echo "File added to the file list: " $FILE
             fi
         done
+        RETVAL=0
         if [ -s "${FILELIST}" ]; then
             vendor/bin/phpcs --standard=PSR12 --exclude=PSR1.Classes.ClassDeclaration,Squiz.Classes.ValidClassName -v --file-list="${FILELIST}"
             RETVAL=$?
