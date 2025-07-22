@@ -71,11 +71,11 @@ runs:
       run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.dev-dependencies }}
     - uses: Ana06/get-changed-files@v2.2.0
       id: files
-      if: github.event_name == 'pull_request'
+      if: ${{ github.event_name == 'pull_request' }}
       with:
         format: 'csv'
     - name: Check the coding style
-      if: github.event_name == 'pull_request'
+      if: ${{ github.event_name == 'pull_request' && steps.files.outputs.added_modified != '' }}
       shell: bash
       run: |
         FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
