@@ -69,6 +69,35 @@ runs:
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
       run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.dev-dependencies }}
+    - uses: Ana06/get-changed-files@v2.2.0
+      id: files
+      if: github.event_name == 'pull_request'
+      with:
+        format: 'csv'
+    - name: Check the coding style
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
+        mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
+        for FILE in "${added_modified_files[@]}"; do
+            EXT="${FILE##*.}"
+            echo "Changed file: " $FILE ", extension: " $EXT
+            if [[ "$EXT" == "php" && $FILE != migrations/Version* ]]; then
+              echo "src/${FILE}" >> "${FILELIST}"
+              echo "File added to the file list: " $FILE
+            fi
+        done
+        if [ -s "${FILELIST}" ]; then
+            vendor/bin/phpcs --standard=PSR12 --exclude=PSR1.Classes.ClassDeclaration,Squiz.Classes.ValidClassName -v --file-list="${FILELIST}"
+            RETVAL=$?
+            echo "The following files were tested for PSR-12 errors:"; echo 
+            cat -n "$FILELIST"
+        else
+            echo "There are no changes in PHP files (no PSR-12 test performed)"
+        fi
+        rm "$FILELIST"
+        exit $RETVAL
     - name: Generate localization files
       if: ${{ steps.extension.outputs.node-version }}
       shell: bash
@@ -139,35 +168,6 @@ runs:
         echo "completed='true'" >> $GITHUB_OUTPUT
     - uses: codecov/codecov-action@v5
       if: ${{ inputs.coverage && steps.backend_test.outputs.completed }}
-    - uses: Ana06/get-changed-files@v2.2.0
-      id: files
-      if: github.event_name == 'pull_request'
-      with:
-        format: 'csv'
-    - name: Execute script for filter
-      if: github.event_name == 'pull_request'
-      shell: bash
-      run: |
-        FILELIST=$(mktemp /tmp/psr12-check.XXXXXX)
-        mapfile -d ',' -t added_modified_files < <(printf '%s,' '${{ steps.files.outputs.added_modified }}')
-        for FILE in "${added_modified_files[@]}"; do
-            EXT="${FILE##*.}"
-            echo "Changed file: " $FILE ", extension: " $EXT
-            if [[ "$EXT" == "php" && $FILE != migrations/Version* ]]; then
-              echo "src/${FILE}" >> "${FILELIST}"
-              echo "File added to the file list: " $FILE
-            fi
-        done
-        if [ -s "${FILELIST}" ]; then
-            vendor/bin/phpcs --standard=PSR12 --exclude=PSR1.Classes.ClassDeclaration,Squiz.Classes.ValidClassName -v --file-list="${FILELIST}"
-            RETVAL=$?
-            echo "The following files were tested for PSR-12 errors:"; echo 
-            cat -n "$FILELIST"
-        else
-            echo "There are no changes in PHP files (no PSR-12 test performed)"
-        fi
-        rm "$FILELIST"
-        exit $RETVAL
     - name: Fail the job if front-end tests weren't OK
       if: ${{ steps.extension.outputs.node-version }}
       shell: bash
