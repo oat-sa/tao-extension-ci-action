@@ -21,6 +21,10 @@ inputs:
      description: Pass the CI_GITHUB_TOKEN when calling this workflow
      default: ''
      required: false
+  npm_token:
+    description: Pass the CI_NPM_READ_TOKEN when calling this workflow
+    default: ''
+    required: false
 runs:
   using: composite
   steps:
@@ -41,9 +45,10 @@ runs:
         echo node-version=$([[ "${{ inputs.coverage }}" && "${{ inputs.node-version }}" && -f views/build/grunt/test.js ]] && echo "${{ inputs.node-version }}") >> $GITHUB_OUTPUT
     - name: Use Node.js ${{ steps.extension.outputs.node-version }}
       if: ${{ steps.extension.outputs.node-version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ steps.extension.outputs.node-version }}
+        registry-url: 'https://registry.npmjs.org'
     - name: Validate dependencies' list
       shell: bash
       run: composer validate --no-interaction --no-plugins
@@ -69,6 +74,8 @@ runs:
     - name: Install the extension, its dev dependencies and phpunit if it's not required by the extension
       shell: bash
       run: composer require --prefer-stable -W --no-interaction "${{ steps.extension.outputs.name }}:dev-${{ steps.extension.outputs.ref }} as v99.99.99" "phpunit/phpunit:~9" "phpspec/prophecy:~1" "squizlabs/php_codesniffer:~3" ${{ steps.extension.outputs.dependencies }} ${{ steps.extension.outputs.dev-dependencies }}
+      env:
+        NODE_AUTH_TOKEN: ${{ inputs.npm_token }}
     - uses: Ana06/get-changed-files@v2.2.0
       id: files
       if: ${{ github.event_name == 'pull_request' }}
