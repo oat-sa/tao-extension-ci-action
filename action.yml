@@ -40,7 +40,7 @@ runs:
         echo id=$(composer config extra.tao-extension-name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
         echo name=$(composer config name --no-interaction --no-plugins) >> $GITHUB_OUTPUT
         echo ref="$([ -z "$(git branch --show-current)" ] && git rev-parse --verify HEAD || git branch --show-current)" >> $GITHUB_OUTPUT
-        echo dependencies=$(composer show --self --direct | grep -E "\sdev-[^\s]+\sas\s" | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
+        echo dependencies=$(composer show --self --direct | grep -E "[[:space:]]dev-[^[:space:]]+[[:space:]]as[[:space:]]" | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
         echo dev-dependencies=$(composer show --self --direct | awk "/requires \(dev\)/" RS= | tail -n +2 | sed "s/ /:/" | awk '{ print "\""$0"\""}') >> $GITHUB_OUTPUT
         echo node-version=$([[ "${{ inputs.coverage }}" && "${{ inputs.node-version }}" && -f views/build/grunt/test.js ]] && echo "${{ inputs.node-version }}") >> $GITHUB_OUTPUT
     - name: Use Node.js ${{ steps.extension.outputs.node-version }}
